@@ -225,6 +225,9 @@ function updateStepName(stepName) {
   $$(`[data-delete-step="${stepName}"]`).forEach((button) => {
     button.setAttribute("aria-label", `Удалить шаг ${step.name}`);
   });
+  $$(`[data-left-delete-step="${stepName}"]`).forEach((button) => {
+    button.setAttribute("aria-label", `Удалить шаг ${step.name}`);
+  });
 }
 
 function updateStepNames() {
@@ -520,6 +523,15 @@ function closeDeleteStepModal() {
   $("#delete-step-modal").hidden = true;
 }
 
+function closeDisableEscalationModal() {
+  $("#disable-escalation-modal").hidden = true;
+}
+
+function openDisableEscalationModal() {
+  $("#disable-escalation-modal").hidden = false;
+  $("#disable-escalation-cancel").focus();
+}
+
 function openDeleteStepModal(stepName) {
   if (stepName === "initial") {
     showToast("Вкладку Начальные действия удалить нельзя");
@@ -756,10 +768,12 @@ function renderActiveActionDelayControl() {
     return;
   }
 
+  const hasNotifications = getCurrentActionLabels().some((label) => channelExtraSettings[label]);
+  if (!hasNotifications) step.recovery = false;
+
   const delayInput = step.delayEnabled
     ? `
       <div class="active-delay-input">
-        <span class="delay-input-label">Минуты</span>
         <div class="delay-stepper">
           <button class="delay-stepper-button" type="button" aria-label="Уменьшить задержку" data-active-delay-step="-1">-</button>
           <span class="delay-divider" aria-hidden="true"></span>
@@ -767,11 +781,22 @@ function renderActiveActionDelayControl() {
           <span class="delay-divider" aria-hidden="true"></span>
           <button class="delay-stepper-button" type="button" aria-label="Увеличить задержку" data-active-delay-step="1">+</button>
         </div>
+        <span class="delay-unit">Мин.</span>
       </div>
     `
     : "";
 
   container.innerHTML = `
+    ${hasNotifications ? `
+      <label class="active-option-row">
+        <span class="switch">
+          <span class="sr-only">Получать Recovery-события</span>
+          <input type="checkbox" data-step-recovery ${step.recovery ? "checked" : ""}>
+          <span class="switch-track"></span>
+        </span>
+        <span>Получать Recovery-события</span>
+      </label>
+    ` : ""}
     <label class="active-option-row">
       <span class="switch">
         <span class="sr-only">Отложенное реагирование</span>
@@ -781,6 +806,54 @@ function renderActiveActionDelayControl() {
       <span>Отложенное реагирование</span>
     </label>
     ${delayInput}
+  `;
+}
+
+function renderFlatActionOptions({ hasActions, hasNotifications }) {
+  const step = ensureStepActionState();
+  if (!step || !hasActions || isEscalationEnabled()) return "";
+
+  const recoveryOption = hasNotifications
+    ? `
+      <label class="active-option-row">
+        <span class="switch">
+          <span class="sr-only">Отправлять Recovery-события</span>
+          <input type="checkbox" data-step-recovery ${step.recovery ? "checked" : ""}>
+          <span class="switch-track"></span>
+        </span>
+        <span>Отправлять Recovery-события</span>
+      </label>
+    `
+    : "";
+
+  const delayInput = step.delayEnabled
+    ? `
+      <div class="active-delay-input">
+        <div class="delay-stepper">
+          <button class="delay-stepper-button" type="button" aria-label="Уменьшить задержку" data-active-delay-step="-1">-</button>
+          <span class="delay-divider" aria-hidden="true"></span>
+          <input type="text" data-active-delay-minutes value="${step.delayMinutes}" inputmode="numeric" pattern="[0-9]*" aria-label="Количество минут задержки">
+          <span class="delay-divider" aria-hidden="true"></span>
+          <button class="delay-stepper-button" type="button" aria-label="Увеличить задержку" data-active-delay-step="1">+</button>
+        </div>
+        <span class="delay-unit">Мин.</span>
+      </div>
+    `
+    : "";
+
+  return `
+    <div class="active-step-options active-flat-options">
+      ${recoveryOption}
+      <label class="active-option-row">
+        <span class="switch">
+          <span class="sr-only">Отложенные события</span>
+          <input type="checkbox" data-active-delay-enabled ${step.delayEnabled ? "checked" : ""}>
+          <span class="switch-track"></span>
+        </span>
+        <span>Отложенные события</span>
+      </label>
+      ${delayInput}
+    </div>
   `;
 }
 
@@ -874,15 +947,20 @@ function renderSphereIncidentFields(label) {
   `;
 }
 
-function renderActiveChannelItem({ label, showExtra }) {
+function renderActiveChannelItem({ label, showExtra, showTitle }) {
   const icon = activeChannelIcons[label];
-
-  return `
-    <div class="active-channel-item">
+  const title = showTitle
+    ? `
       <div class="active-channel-title">
         ${icon ? `<svg class="icon"><use href="${icon}"></use></svg>` : ""}
         <span>${label}</span>
       </div>
+    `
+    : "";
+
+  return `
+    <div class="active-channel-item">
+      ${title}
       ${renderChannelExtra(label, showExtra)}
       ${renderSphereIncidentFields(label)}
     </div>
@@ -893,29 +971,10 @@ function syncLegacyStepControls() {
   const step = ensureStepActionState();
   if (!step) return;
 
-  const activeSettings = getActionSettings(getActiveActionLabel());
-  $("#recovery").checked = activeSettings?.recovery || step.recovery;
+  $("#recovery").checked = step.recovery;
   $("#delay-enabled").checked = step.delayEnabled;
   $("#delay-minutes").value = step.delayMinutes;
   syncDelayUi();
-}
-
-function renderActiveRecoveryOption({ hasNotifications }) {
-  const settings = getActionSettings(getActiveActionLabel());
-  if (!settings || !hasNotifications) return "";
-
-  return `
-    <div class="active-step-options active-recovery-options">
-      <label class="active-option-row">
-        <span class="switch">
-          <span class="sr-only">Получать recovery-события</span>
-          <input type="checkbox" data-active-recovery ${settings.recovery ? "checked" : ""}>
-          <span class="switch-track"></span>
-        </span>
-        <span>Получать recovery-события</span>
-      </label>
-    </div>
-  `;
 }
 
 function renderActiveChannelList() {
@@ -926,7 +985,8 @@ function renderActiveChannelList() {
   const activeToggles = getVisibleActionLabels()
     .map((label) => ({
       label,
-      showExtra: showSettings && Boolean(channelExtraSettings[label])
+      showExtra: showSettings && Boolean(channelExtraSettings[label]),
+      showTitle: !isEscalationEnabled()
     }));
 
   list.hidden = activeToggles.length === 0;
@@ -944,10 +1004,11 @@ function renderActiveChannelList() {
     : "";
 
   list.innerHTML = [
-    ...notificationItems.map(renderActiveChannelItem),
-    renderActiveRecoveryOption({
+    renderFlatActionOptions({
+      hasActions: activeToggles.length > 0,
       hasNotifications: notificationItems.length > 0
     }),
+    ...notificationItems.map(renderActiveChannelItem),
     divider,
     ...sphereItems.map(renderActiveChannelItem)
   ].join("");
@@ -971,24 +1032,43 @@ function renderActiveStepBar() {
     return;
   }
 
-  const stepButtons = getOrderedStepNames().map((stepName) => {
+  const orderedStepNames = getOrderedStepNames();
+  const hasManySteps = orderedStepNames.length > 5;
+  const stepButtons = orderedStepNames.map((stepName) => {
     const step = ruleSteps[stepName];
     const stepNumber = getStepNumber(stepName);
     const label = stepName === "initial" ? "Шаг 1: Начальные действия" : `Шаг ${stepNumber}: ${step.name}`;
     const active = stepName === currentStep ? " active" : "";
-    return `<button class="active-step-pill${active}" type="button" data-left-step="${stepName}">${label}</button>`;
+    const deleteButton = stepName === "initial"
+      ? ""
+      : `
+        <button class="active-step-delete" type="button" data-left-delete-step="${stepName}" aria-label="Удалить шаг ${step.name}">
+          <svg class="icon icon-sm"><use href="#i-close"></use></svg>
+        </button>
+      `;
+
+    return `
+      <span class="active-step-pill-wrap${active}">
+        <button class="active-step-pill" type="button" data-left-step="${stepName}">
+          <svg class="icon icon-sm active-step-pill-icon"><use href="#i-runner"></use></svg>
+          <span class="active-step-pill-text">${label}</span>
+        </button>
+        ${deleteButton}
+      </span>
+    `;
   }).join("");
 
   bar.innerHTML = `
-    <div class="active-step-pills">${stepButtons}</div>
-    <button class="active-step-add" type="button" data-left-add-step aria-label="Добавить шаг эскалации">
-      <svg class="icon icon-sm"><use href="#i-plus"></use></svg>
-    </button>
+    <div class="active-step-pills${hasManySteps ? " many-steps" : ""}">
+      ${stepButtons}
+      <button class="active-step-add" type="button" data-left-add-step aria-label="Добавить шаг эскалации">
+        <svg class="icon icon-sm"><use href="#i-plus"></use></svg>
+      </button>
+    </div>
   `;
 }
 
 function resetEscalationSteps() {
-  persistCurrentActionToggles();
   getEscalationStepNames().forEach((stepName) => {
     removeStepElements(stepName);
     delete ruleSteps[stepName];
@@ -999,6 +1079,9 @@ function resetEscalationSteps() {
   updateStepNames();
   applyStepState("initial");
   applyActionTogglesForStep("initial");
+  renderStepSummary("initial");
+  updateStepDelayBadge("initial");
+  updateCreateState();
 }
 
 function syncEscalationUi() {
@@ -1006,6 +1089,7 @@ function syncEscalationUi() {
   $(".step-cards").hidden = !enabled;
   $("#add-escalation").hidden = !enabled;
   $(".action-channel-toggles").hidden = enabled;
+  $(".actions-divider").hidden = enabled;
   $("#active-action-area").hidden = !enabled;
 
   if (!enabled) {
@@ -1265,9 +1349,23 @@ $$("[data-channel-toggle]").forEach((toggle) => {
   });
 });
 
-$("#escalation-enabled").addEventListener("change", syncEscalationUi);
+$("#escalation-enabled").addEventListener("change", () => {
+  if (!$("#escalation-enabled").checked) {
+    $("#escalation-enabled").checked = true;
+    openDisableEscalationModal();
+    return;
+  }
+
+  syncEscalationUi();
+});
 
 $("#active-step-bar").addEventListener("click", (event) => {
+  const deleteButton = event.target.closest("[data-left-delete-step]");
+  if (deleteButton) {
+    openDeleteStepModal(deleteButton.dataset.leftDeleteStep);
+    return;
+  }
+
   const addButton = event.target.closest("[data-left-add-step]");
   if (addButton) {
     addEscalationStep();
@@ -1325,6 +1423,24 @@ $("#delete-step-confirm").addEventListener("click", () => {
 $("#delete-step-modal").addEventListener("click", (event) => {
   if (event.target === event.currentTarget) {
     closeDeleteStepModal();
+  }
+});
+
+$("#disable-escalation-cancel").addEventListener("click", () => {
+  $("#escalation-enabled").checked = true;
+  closeDisableEscalationModal();
+});
+
+$("#disable-escalation-confirm").addEventListener("click", () => {
+  closeDisableEscalationModal();
+  $("#escalation-enabled").checked = false;
+  syncEscalationUi();
+});
+
+$("#disable-escalation-modal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) {
+    $("#escalation-enabled").checked = true;
+    closeDisableEscalationModal();
   }
 });
 
@@ -1423,12 +1539,13 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  const recovery = event.target.closest("[data-active-recovery]");
+  const recovery = event.target.closest("[data-step-recovery]");
   if (recovery) {
-    const settings = getActionSettings(getActiveActionLabel());
-    if (settings) settings.recovery = recovery.checked;
+    ruleSteps[currentStep].recovery = recovery.checked;
     syncLegacyStepControls();
-    renderActiveChannelList();
+    if (isEscalationEnabled()) {
+      renderActiveActionDelayControl();
+    }
     return;
   }
 
@@ -1438,7 +1555,11 @@ document.addEventListener("change", (event) => {
     ruleSteps[currentStep].delayMinutes = normalizeDelayMinutes(ruleSteps[currentStep].delayMinutes);
     syncLegacyStepControls();
     updateStepDelayBadge(currentStep);
-    renderActiveActionDelayControl();
+    if (isEscalationEnabled()) {
+      renderActiveActionDelayControl();
+    } else {
+      renderActiveChannelList();
+    }
   }
 });
 
@@ -1460,7 +1581,11 @@ document.addEventListener("click", (event) => {
   ruleSteps[currentStep].delayMinutes = normalizeDelayMinutes(nextValue);
   syncLegacyStepControls();
   updateStepDelayBadge(currentStep);
-  renderActiveActionDelayControl();
+  if (isEscalationEnabled()) {
+    renderActiveActionDelayControl();
+  } else {
+    renderActiveChannelList();
+  }
 });
 
 $("#action-picker-menu").addEventListener("click", (event) => event.stopPropagation());
@@ -1473,6 +1598,8 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeMenus();
     closeDeleteStepModal();
+    $("#escalation-enabled").checked = isEscalationEnabled();
+    closeDisableEscalationModal();
   }
 });
 window.addEventListener("resize", updateStepTabsLayout);

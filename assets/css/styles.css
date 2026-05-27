@@ -476,7 +476,7 @@
     }
 
     .active-step-bar {
-      grid-template-columns: minmax(0, 1fr) 34px;
+      grid-template-columns: minmax(0, 1fr);
       align-items: center;
       gap: 8px;
       margin-bottom: 8px;
@@ -487,34 +487,109 @@
       min-width: 0;
       display: flex;
       align-items: center;
-      gap: 6px;
-      overflow-x: auto;
+      gap: 2px;
+      overflow: hidden;
     }
 
-    .active-step-pill {
+    .active-step-pill-wrap {
       min-width: 0;
-      height: 34px;
+      height: 30px;
       border: 1px solid #4b4f5b;
       border-radius: var(--radius);
       background: #111216;
       color: #f0eff3;
       display: inline-flex;
       align-items: center;
-      padding: 0 12px;
+      overflow: hidden;
+      flex: 0 1 220px;
+    }
+
+    .active-step-pills.many-steps .active-step-pill-wrap {
+      flex: 1 1 0;
+      min-width: 20px;
+    }
+
+    .active-step-pills.many-steps .active-step-pill-wrap.active {
+      flex-grow: 1.25;
+      min-width: 58px;
+    }
+
+    .active-step-pill {
+      min-width: 0;
+      flex: 1 1 auto;
+      height: 100%;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 9px;
       font-weight: 800;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       cursor: pointer;
     }
 
-    .active-step-pill.active {
+    .active-step-pill-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .active-step-pill-icon {
+      display: none;
+      flex: 0 0 auto;
+      color: #dfe1e7;
+    }
+
+    .active-step-pills.many-steps .active-step-pill-wrap:not(.active) .active-step-pill {
+      padding: 0;
+    }
+
+    .active-step-pills.many-steps .active-step-pill-wrap:not(.active) .active-step-pill-text {
+      display: none;
+    }
+
+    .active-step-pills.many-steps .active-step-pill-wrap:not(.active) .active-step-pill-icon {
+      display: block;
+    }
+
+    .active-step-pill-wrap.active {
       border-color: #7b808e;
       background: #1a1c23;
       color: #fff;
     }
 
+    .active-step-delete {
+      width: 26px;
+      height: 100%;
+      border: 0;
+      border-left: 1px solid #363946;
+      background: transparent;
+      color: #9a9da8;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .active-step-delete:hover {
+      color: #fff;
+      background: #232631;
+    }
+
+    .active-step-pills.many-steps .active-step-pill-wrap:not(.active) .active-step-delete {
+      display: none;
+    }
+
     .active-step-add {
-      width: 34px;
-      height: 34px;
+      width: 26px;
+      height: 30px;
+      flex: 0 0 26px;
       border: 1px solid #4b4f5b;
       border-radius: var(--radius);
       background: #111216;
@@ -663,7 +738,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       justify-content: flex-start;
     }
 
@@ -674,7 +749,7 @@
     .active-channel-list {
       gap: 2px;
       align-content: start;
-      overflow-y: auto;
+      overflow: visible;
     }
 
     .active-channel-item {
@@ -712,6 +787,11 @@
       padding: 4px 0 8px;
     }
 
+    .active-flat-options {
+      padding: 0 0 12px;
+      margin-bottom: 4px;
+    }
+
     .active-option-row,
     .active-delay-row {
       display: flex;
@@ -729,9 +809,36 @@
     .active-delay-input {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       color: #b9bac3;
       font-size: 13px;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .active-delay-input .delay-stepper {
+      height: 28px;
+      border-radius: 9px;
+    }
+
+    .active-delay-input .delay-stepper-button {
+      width: 38px;
+      height: 28px;
+      font-size: 15px;
+    }
+
+    .active-delay-input .delay-stepper input {
+      width: 66px;
+      height: 28px;
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .delay-unit {
+      color: #d7d8de;
+      font-size: 14px;
+      font-weight: 750;
+      white-space: nowrap;
     }
 
     .side-panel {
@@ -1195,6 +1302,10 @@
       min-width: 0;
     }
 
+    .select-wrap.open {
+      z-index: 40;
+    }
+
     .select-button {
       width: 100%;
       height: 33px;
@@ -1224,7 +1335,7 @@
 
     .menu {
       position: absolute;
-      z-index: 20;
+      z-index: 50;
       top: calc(100% + 6px);
       left: 0;
       right: 0;
@@ -1355,6 +1466,10 @@
       height: 1px;
       background: #202228;
       margin: 16px 0;
+    }
+
+    .actions-divider[hidden] {
+      display: none;
     }
 
     .period-title {
@@ -1525,6 +1640,11 @@
     .active-incident-settings {
       max-width: none;
       padding-top: 2px;
+      overflow: visible;
+    }
+
+    .active-incident-settings .select-wrap.open .menu {
+      z-index: 70;
     }
 
     .escalation-switch {
